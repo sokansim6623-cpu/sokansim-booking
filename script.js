@@ -10,33 +10,91 @@ const submitButton = document.getElementById("submitButton");
 const errorMessage = document.getElementById("errorMessage");
 const successScreen = document.getElementById("successScreen");
 const reservationSummary = document.getElementById("reservationSummary");
+const calendarTitle = document.getElementById("calendarTitle");
+const calendarDays = document.getElementById("calendarDays");
+const previousMonthButton = document.getElementById("previousMonth");
+const nextMonthButton = document.getElementById("nextMonth");
 
 const morningTimes = [
-  "08:30", "09:00", "09:30", "10:00", "10:30",
-  "11:00", "11:30", "12:00", "12:30"
+  "08:30",
+  "09:00",
+  "09:30",
+  "10:00",
+  "10:30",
+  "11:00",
+  "11:30",
+  "12:00",
+  "12:30"
 ];
 
 const afternoonTimes = [
-  "14:00", "14:30", "15:00", "15:30",
-  "16:00", "16:30", "17:00", "17:30"
+  "14:00",
+  "14:30",
+  "15:00",
+  "15:30",
+  "16:00",
+  "16:30",
+  "17:00",
+  "17:30"
 ];
 
 const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
 
+const fixedClosedDates = new Set([
+  "2026-01-01",
+
+  "2026-02-16",
+  "2026-02-17",
+  "2026-02-18",
+
+  "2026-03-01",
+  "2026-03-02",
+
+  "2026-05-05",
+  "2026-05-24",
+  "2026-05-25",
+
+  "2026-06-03",
+  "2026-06-06",
+
+  "2026-07-17",
+
+  "2026-08-15",
+  "2026-08-17",
+
+  "2026-09-24",
+  "2026-09-25",
+  "2026-09-26",
+
+  "2026-10-03",
+  "2026-10-05",
+  "2026-10-09",
+
+  "2026-12-25"
+]);
+
 let selectedTime = "";
-let closedDates = new Set();
+let closedDates = new Set(fixedClosedDates);
 let bookedSlots = new Set();
+
+let calendarMonth = new Date();
+
+calendarMonth = new Date(
+  calendarMonth.getFullYear(),
+  calendarMonth.getMonth(),
+  1
+);
 
 function pad(number) {
   return String(number).padStart(2, "0");
 }
 
 function toDateKey(date) {
-  return [
-    date.getFullYear(),
-    pad(date.getMonth() + 1),
-    pad(date.getDate())
-  ].join("-");
+  return (
+    `${date.getFullYear()}-` +
+    `${pad(date.getMonth() + 1)}-` +
+    `${pad(date.getDate())}`
+  );
 }
 
 function addDays(date, days) {
@@ -46,7 +104,10 @@ function addDays(date, days) {
 }
 
 function parseDate(dateKey) {
-  const [year, month, day] = dateKey.split("-").map(Number);
+  const [year, month, day] = dateKey
+    .split("-")
+    .map(Number);
+
   return new Date(year, month - 1, day);
 }
 
@@ -61,6 +122,19 @@ function formatDate(dateKey) {
   );
 }
 
+function getDateRange() {
+  const today = new Date();
+  const minimumDate = addDays(today, 1);
+  const maximumDate = addDays(today, 90);
+
+  return {
+    minimumDate,
+    maximumDate,
+    start: toDateKey(minimumDate),
+    end: toDateKey(maximumDate)
+  };
+}
+
 function showError(message) {
   errorMessage.textContent = message;
   errorMessage.classList.add("show");
@@ -71,48 +145,154 @@ function clearError() {
   errorMessage.classList.remove("show");
 }
 
-function setDateRange() {
-  const today = new Date();
-  const minimumDate = addDays(today, 1);
-  const maximumDate = addDays(today, 90);
+function isDisabledDate(date) {
+  const range = getDateRange();
+  const dateKey = toDateKey(date);
+  const day = date.getDay();
 
-  dateInput.min = toDateKey(minimumDate);
-  dateInput.max = toDateKey(maximumDate);
+  const selectedDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
 
-  return {
-    start: toDateKey(minimumDate),
-    end: toDateKey(maximumDate)
-  };
+  const minimumDate = new Date(
+    range.minimumDate.getFullYear(),
+    range.minimumDate.getMonth(),
+    range.minimumDate.getDate()
+  );
+
+  const maximumDate = new Date(
+    range.maximumDate.getFullYear(),
+    range.maximumDate.getMonth(),
+    range.maximumDate.getDate()
+  );
+
+  return (
+    selectedDate < minimumDate ||
+    selectedDate > maximumDate ||
+    day === 0 ||
+    day === 6 ||
+    closedDates.has(dateKey)
+  );
 }
 
-async function loadAvailability() {
-  const range = setDateRange();
+function renderCalendar() {
+  calendarDays.innerHTML = "";
 
-  try {
-    const response = await fetch(
-      `/api/availability?start=${range.start}&end=${range.end}`
-    );
+  const year = calendarMonth.getFullYear();
+  const month = calendarMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDate = new Date(year, month + 1, 0).getDate();
 
-    const result = await response.json();
+  calendarTitle.textContent =
+    `${year}년 ${month + 1}월`;
 
-    if (!response.ok) {
-      throw new Error(result.error);
+  for (
+    let index = 0;
+    index < firstDay.getDay();
+    index += 1
+  ) {
+    const emptyDay = document.createElement("span");
+    emptyDay.className = "day empty";
+    calendarDays.appendChild(emptyDay);
+  }
+
+  for (let day = 1; day <= lastDate; day += 1) {
+    const date = new Date(year, month, day);
+    const dateKey = toDateKey(date);
+    const button = document.createElement("button");
+
+    button.type = "button";
+    button.textContent = day;
+    button.className = "day";
+
+    if (dateInput.value === dateKey) {
+      button.classList.add("selected");
     }
 
-    closedDates = new Set(result.closedDates || []);
-    bookedSlots = new Set(result.bookedSlots || []);
-  } catch (error) {
-    showError(
-      error.message || "예약 일정을 불러오지 못했습니다."
-    );
+    if (isDisabledDate(date)) {
+      button.disabled = true;
+      button.classList.add("disabled");
+    } else {
+      button.addEventListener("click", function () {
+        dateInput.value = dateKey;
+        selectedTime = "";
+
+        document
+          .querySelectorAll(".day")
+          .forEach(function (calendarButton) {
+            calendarButton.classList.remove("selected");
+          });
+
+        button.classList.add("selected");
+
+        dateGuide.textContent =
+          `${formatDate(dateKey)} 진료시간을 선택해 주세요.`;
+
+        renderTimes(dateKey);
+        clearError();
+      });
+    }
+
+    calendarDays.appendChild(button);
   }
+
+  const range = getDateRange();
+
+  const previousMonthEnd = new Date(
+    year,
+    month,
+    0
+  );
+
+  const nextMonthStart = new Date(
+    year,
+    month + 1,
+    1
+  );
+
+  previousMonthButton.disabled =
+    previousMonthEnd < range.minimumDate;
+
+  nextMonthButton.disabled =
+    nextMonthStart > range.maximumDate;
 }
+
+previousMonthButton.addEventListener(
+  "click",
+  function () {
+    calendarMonth = new Date(
+      calendarMonth.getFullYear(),
+      calendarMonth.getMonth() - 1,
+      1
+    );
+
+    renderCalendar();
+  }
+);
+
+nextMonthButton.addEventListener(
+  "click",
+  function () {
+    calendarMonth = new Date(
+      calendarMonth.getFullYear(),
+      calendarMonth.getMonth() + 1,
+      1
+    );
+
+    renderCalendar();
+  }
+);
 
 function getTimesForDate(dateKey) {
   const date = parseDate(dateKey);
 
   if (date.getDay() === 4) {
-    return [...morningTimes, ...afternoonTimes];
+    return [
+      ...morningTimes,
+      ...afternoonTimes
+    ];
   }
 
   return morningTimes;
@@ -133,13 +313,14 @@ function renderTimes(dateKey) {
     button.type = "button";
     button.className = "time-button";
     button.disabled = isBooked;
-    button.textContent = isBooked ? `${time} 마감` : time;
+    button.textContent =
+      isBooked ? `${time} 마감` : time;
 
     button.addEventListener("click", function () {
       document
         .querySelectorAll(".time-button")
-        .forEach(function (item) {
-          item.classList.remove("selected");
+        .forEach(function (timeButton) {
+          timeButton.classList.remove("selected");
         });
 
       selectedTime = time;
@@ -151,44 +332,39 @@ function renderTimes(dateKey) {
   });
 }
 
-dateInput.addEventListener("change", function () {
-  clearError();
-  selectedTime = "";
+async function loadAvailability() {
+  const range = getDateRange();
 
-  const selectedDate = dateInput.value;
+  closedDates = new Set(fixedClosedDates);
 
-  if (!selectedDate) {
-    timeArea.className = "empty-time";
-    timeArea.textContent = "먼저 예약 희망일을 선택해 주세요.";
-    return;
+  try {
+    const response = await fetch(
+      `/api/availability?start=${range.start}&end=${range.end}`
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error);
+    }
+
+    closedDates = new Set([
+      ...fixedClosedDates,
+      ...(result.closedDates || [])
+    ]);
+
+    bookedSlots = new Set(
+      result.bookedSlots || []
+    );
+  } catch (error) {
+    showError(
+      error.message ||
+      "예약 일정을 불러오지 못했습니다."
+    );
   }
 
-  const date = parseDate(selectedDate);
-  const day = date.getDay();
-
-  if (day === 0 || day === 6) {
-    dateInput.value = "";
-    timeArea.className = "empty-time";
-    timeArea.textContent = "먼저 예약 희망일을 선택해 주세요.";
-    dateGuide.textContent =
-      "토요일과 일요일은 휴진입니다. 다른 날짜를 선택해 주세요.";
-    return;
-  }
-
-  if (closedDates.has(selectedDate)) {
-    dateInput.value = "";
-    timeArea.className = "empty-time";
-    timeArea.textContent = "먼저 예약 희망일을 선택해 주세요.";
-    dateGuide.textContent =
-      "공휴일·대체공휴일 또는 휴진일입니다. 다른 날짜를 선택해 주세요.";
-    return;
-  }
-
-  dateGuide.textContent =
-    "날짜 입력칸을 누르면 달력이 열립니다. 당일 예약은 신청할 수 없습니다.";
-
-  renderTimes(selectedDate);
-});
+  renderCalendar();
+}
 
 birthInput.addEventListener("input", function () {
   birthInput.value = birthInput.value
@@ -222,38 +398,47 @@ form.addEventListener("submit", async function (event) {
   }
 
   if (!/^\d{4}$/.test(phoneLast4)) {
-    showError("휴대전화번호 뒤 4자리를 확인해 주세요.");
+    showError(
+      "휴대전화번호 뒤 4자리를 확인해 주세요."
+    );
     return;
   }
 
   if (!appointmentDate || !selectedTime) {
-    showError("예약 희망 날짜와 시간대를 선택해 주세요.");
+    showError(
+      "예약 희망 날짜와 시간대를 선택해 주세요."
+    );
     return;
   }
 
   if (!privacyInput.checked) {
-    showError("개인정보 수집·이용에 동의해 주세요.");
+    showError(
+      "개인정보 수집·이용에 동의해 주세요."
+    );
     return;
   }
 
   submitButton.disabled = true;
-  submitButton.innerHTML = "신청 중입니다…";
+  submitButton.textContent = "신청 중입니다…";
 
   try {
-    const response = await fetch("/api/reservation", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        patientName,
-        birthDate,
-        phoneLast4,
-        appointmentDate,
-        appointmentTime: selectedTime,
-        privacyConsent: true
-      })
-    });
+    const response = await fetch(
+      "/api/reservation",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          patientName,
+          birthDate,
+          phoneLast4,
+          appointmentDate,
+          appointmentTime: selectedTime,
+          privacyConsent: true
+        })
+      }
+    );
 
     const result = await response.json();
 
@@ -263,13 +448,13 @@ form.addEventListener("submit", async function (event) {
 
     reservationSummary.innerHTML =
       `<strong>${formatDate(appointmentDate)}</strong><br>` +
-      `${selectedTime < "13:00" ? "오전" : "오후"} ${selectedTime}`;
+      `${selectedTime < "13:00" ? "오전" : "오후"} ` +
+      selectedTime;
 
     form.classList.add("hidden");
     successScreen.classList.remove("hidden");
 
-    window.scrollTo({
-      top: successScreen.offsetTop - 20,
+    successScreen.scrollIntoView({
       behavior: "smooth"
     });
   } catch (error) {
@@ -280,7 +465,7 @@ form.addEventListener("submit", async function (event) {
 
     submitButton.disabled = false;
     submitButton.innerHTML =
-      "예약 신청하기 <span>→</span>";
+      '예약 신청하기 <span>→</span>';
   }
 });
 
