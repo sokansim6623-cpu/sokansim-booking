@@ -1,6 +1,10 @@
 const $ = id => document.getElementById(id);
 
 const form = $("reservationForm");
+const bookingTab = $("bookingTab");
+const lookupTab = $("lookupTab");
+const bookingFields = $("bookingFields");
+const privacyDescription = $("privacyDescription");
 const nameInput = $("patientName");
 const birthInput = $("birthDate");
 const phoneInput = $("phoneNumber");
@@ -35,6 +39,7 @@ let closedDates = new Set();
 let bookedSlots = new Set();
 let calendarMonth = new Date();
 let requestMode = "reservation";
+let pageMode = "booking";
 let activeReservation = null;
 
 calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
@@ -210,9 +215,28 @@ function validateForm() {
   if (!/^[가-힣a-zA-Z\s]{2,20}$/.test(patient.patientName)) return "성함을 정확히 입력해 주세요.";
   if (!/^\d{8}$/.test(patient.birthDate)) return "생년월일 8자리를 확인해 주세요.";
   if (!/^01[016789]-\d{3,4}-\d{4}$/.test(patient.phoneNumber)) return "휴대전화번호를 확인해 주세요.";
-  if (!dateInput.value || !selectedTime) return "예약 희망 날짜와 시간대를 선택해 주세요.";
   if (!privacyInput.checked) return "개인정보 수집·이용에 동의해 주세요.";
+  if (pageMode === "lookup") return "";
+  if (!dateInput.value || !selectedTime) return "예약 희망 날짜와 시간대를 선택해 주세요.";
   return "";
+}
+
+bookingTab.addEventListener("click", () => setPageMode("booking"));
+lookupTab.addEventListener("click", () => setPageMode("lookup"));
+
+function setPageMode(mode) {
+  pageMode = mode;
+  requestMode = mode === "lookup" ? "lookup" : "reservation";
+  bookingTab.classList.toggle("active", mode === "booking");
+  lookupTab.classList.toggle("active", mode === "lookup");
+  bookingFields.classList.toggle("hidden", mode === "lookup");
+  privacyDescription.textContent = mode === "lookup"
+    ? "예약 확인을 위해 성함, 생년월일, 휴대전화번호를 수집합니다."
+    : "예약 확인을 위해 성함, 생년월일, 휴대전화번호, 희망 일시를 수집합니다.";
+  submitButton.innerHTML = mode === "lookup"
+    ? '예약 확인하기 <span>→</span>'
+    : '예약 신청하기 <span>→</span>';
+  clearError();
 }
 
 form.addEventListener("submit", async event => {
@@ -239,13 +263,17 @@ form.addEventListener("submit", async event => {
     });
     const result = await response.json();
 
+    if (requestMode === "lookup" && response.ok && result.reservation) {
+      showExistingReservation(result.reservation);
+      return;
+    }
     if (result.code === "existing_reservation") {
       showExistingReservation(result.reservation);
       return;
     }
     if (!response.ok) throw new Error(result.error);
 
-    const title = requestMode === "change" ? "예약이 변경되었습니다." : "예약 신청이 접수되었습니다.";
+    const title = requestMode === "change" ? "예약이 변경되었습니다." : "예약이 확정되었습니다.";
     showSuccess(title, dateInput.value, selectedTime);
   } catch (error) {
     showError(error.message || "예약 신청 중 오류가 발생했습니다.");
@@ -258,6 +286,8 @@ function setSubmitting(isSubmitting) {
   submitButton.disabled = isSubmitting;
   submitButton.innerHTML = isSubmitting
     ? '<span class="spinner"></span> 예약을 확인하고 있습니다.'
+    : pageMode === "lookup"
+      ? '예약 확인하기 <span>→</span>'
     : requestMode === "change"
       ? '예약 변경하기 <span>→</span>'
       : '예약 신청하기 <span>→</span>';
@@ -273,7 +303,11 @@ function showExistingReservation(reservation) {
 }
 
 changeButton.addEventListener("click", async () => {
+  pageMode = "booking";
   requestMode = "change";
+  bookingTab.classList.add("active");
+  lookupTab.classList.remove("active");
+  bookingFields.classList.remove("hidden");
   existingScreen.classList.add("hidden");
   form.classList.remove("hidden");
   dateInput.value = "";
@@ -326,7 +360,7 @@ function showSuccess(title, dateKey, time) {
   successTitle.textContent = title;
   successGuide.textContent = title.includes("취소")
     ? "취소된 시간은 다시 예약할 수 있습니다."
-    : "예약이 완료되면 확정 안내 문자를 보내드리겠습니다.";
+    : "예약하신 날짜와 시간을 확인해 주세요.";
   reservationSummary.innerHTML = dateKey
     ? `<strong>${formatDate(dateKey)}</strong><br>${time < "13:00" ? "오전" : "오후"} ${time}`
     : "예약 취소가 정상적으로 처리되었습니다.";

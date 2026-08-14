@@ -18,7 +18,8 @@ h1{margin:0;color:var(--navy);font-size:clamp(38px,8vw,58px);letter-spacing:-2px
 .doctor-logo{display:grid;width:76px;height:76px;padding:9px;place-items:center;border-radius:22px;background:linear-gradient(145deg,#fff4d4,#edcf91)}
 .doctor-logo img{width:100%;height:100%;object-fit:contain}
 .doctor span{color:#9a7551;font-size:13px}.doctor strong{margin-top:5px;color:var(--navy);font-size:24px}.doctor p{margin:6px 0 0;color:var(--gray)}
-form{margin-top:26px}.card{margin-bottom:20px;padding:30px;border-radius:28px;overflow:hidden}
+.mode-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:26px;padding:7px;border:1px solid #e3dacf;border-radius:18px;background:#ffffffb8;box-shadow:0 10px 28px #2329330a}.mode-tab{min-height:50px;color:#6f7480;font-weight:800;border:0;border-radius:13px;background:transparent;cursor:pointer}.mode-tab.active{color:#fff;background:linear-gradient(135deg,#203b68,#10213f);box-shadow:0 7px 18px #14284926}
+form{margin-top:18px}.card{margin-bottom:20px;padding:30px;border-radius:28px;overflow:hidden}
 .title{gap:12px;margin-bottom:25px}.title span{display:grid;width:44px;height:44px;place-items:center;color:#fff;font-weight:800;border-radius:13px;background:linear-gradient(145deg,#d0a15b,#b98039)}
 h2{margin:0;color:var(--navy)}
 label{display:block;margin-bottom:20px;color:#39465c;font-weight:700}

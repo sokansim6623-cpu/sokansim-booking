@@ -27,6 +27,11 @@
     </div>
   </section>
 
+  <div class="mode-tabs" role="tablist" aria-label="예약 메뉴">
+    <button type="button" id="bookingTab" class="mode-tab active">예약 신청</button>
+    <button type="button" id="lookupTab" class="mode-tab">예약 확인</button>
+  </div>
+
   <form id="reservationForm">
     <section class="card">
       <div class="title"><span>01</span><h2>환자 정보</h2></div>
@@ -43,6 +48,7 @@
       </label>
     </section>
 
+    <div id="bookingFields">
     <section class="card">
       <div class="title"><span>02</span><h2>예약 희망일</h2></div>
       <label>예약 희망 날짜 *</label>
@@ -63,10 +69,11 @@
       <div class="title"><span>03</span><h2>시간대 선택</h2></div>
       <div id="timeArea" class="empty">먼저 예약 희망일을 선택해 주세요.</div>
     </section>
+    </div>
 
     <label class="privacy">
       <input type="checkbox" id="privacyConsent">
-      <span><strong>개인정보 수집·이용에 동의합니다. *</strong><small>예약 확인을 위해 성함, 생년월일, 휴대전화번호, 희망 일시를 수집합니다.</small></span>
+      <span><strong>개인정보 수집·이용에 동의합니다. *</strong><small id="privacyDescription">예약 확인을 위해 성함, 생년월일, 휴대전화번호, 희망 일시를 수집합니다.</small></span>
     </label>
 
     <p id="errorMessage" class="error" role="alert"></p>
@@ -88,8 +95,8 @@
 
   <section id="successScreen" class="success hidden">
     <div class="check">✓</div>
-    <h2 id="successTitle">예약이 완료되었습니다.</h2>
-    <p id="successGuide" class="screen-guide">예약이 완료되면 확정 안내 문자를 보내드리겠습니다.</p>
+    <h2 id="successTitle">예약이 확정되었습니다.</h2>
+    <p id="successGuide" class="screen-guide">예약하신 날짜와 시간을 확인해 주세요.</p>
     <div id="reservationSummary" class="summary"></div>
     <button type="button" id="homeButton" class="action primary full">확인</button>
   </section>

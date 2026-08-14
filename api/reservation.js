@@ -87,6 +87,9 @@ export default async function handler(req, res) {
         error: "예약 정보를 찾을 수 없습니다. 처음부터 다시 확인해 주세요."
       });
     }
+    if (action === "lookup" && data.ok === true && data.reservation) {
+      return res.status(200).json({ ok: true, reservation: data.reservation });
+    }
     if (!response.ok || data.ok !== true) {
       throw new Error(data.error || "request_failed");
     }
