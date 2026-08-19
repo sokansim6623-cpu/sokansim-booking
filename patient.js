@@ -10,7 +10,8 @@ const afternoon=["14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"
 const weekdays=["일","월","화","수","목","금","토"];
 const availabilityCache=new Map();
 const availabilityRequests=new Map();
-const CACHE_MS=30000;
+const CACHE_MS=60000;
+const STORAGE_PREFIX="sokansim_availability_";
 let reservations=[],currentReservation=null,selectedTime="",calendarMonth=new Date();
 calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth(),1);
 
@@ -25,7 +26,17 @@ function monthRange(d){const y=d.getFullYear(),m=d.getMonth();return{start:toKey
 function showError(el,msg){el.textContent=msg;el.classList.add("show")}
 function clearError(el){el.textContent="";el.classList.remove("show")}
 function baseDisabled(d){const r=range(),x=new Date(d.getFullYear(),d.getMonth(),d.getDate()),min=new Date(r.min.getFullYear(),r.min.getMonth(),r.min.getDate()),max=new Date(r.max.getFullYear(),r.max.getMonth(),r.max.getDate());return x<min||x>max||d.getDay()===0||d.getDay()===6}
-function monthData(d){return availabilityCache.get(monthKey(d))||null}
+function restoreMonthCache(key){
+  if(availabilityCache.has(key))return availabilityCache.get(key);
+  try{
+    const raw=localStorage.getItem(STORAGE_PREFIX+key);if(!raw)return null;
+    const saved=JSON.parse(raw);if(!saved||!saved.loadedAt||Date.now()-saved.loadedAt>CACHE_MS)return null;
+    const data={closedDates:new Set(saved.closedDates||[]),bookedSlots:new Set(saved.bookedSlots||[]),loadedAt:saved.loadedAt};
+    availabilityCache.set(key,data);return data;
+  }catch{return null}
+}
+function saveMonthCache(key,data){try{localStorage.setItem(STORAGE_PREFIX+key,JSON.stringify({closedDates:[...data.closedDates],bookedSlots:[...data.bookedSlots],loadedAt:data.loadedAt}))}catch{}}
+function monthData(d){const key=monthKey(d);return availabilityCache.get(key)||restoreMonthCache(key)||null}
 function isClosed(d){const data=monthData(d);return !!(data&&data.closedDates.has(toKey(d)))}
 
 phoneInput.oninput=()=>phoneInput.value=phoneInput.value.replace(/\D/g,"").slice(0,4);
@@ -43,8 +54,11 @@ lookupForm.onsubmit=async e=>{
     reservations=Array.isArray(result.reservations)?result.reservations:[];
     if(!reservations.length)throw new Error("확인되는 예약이 없습니다.");
     renderReservations();
-    // 환자가 '예약 변경'을 누르기 전에 이번 달 일정부터 미리 불러옵니다.
-    loadMonthAvailability(new Date(),false).catch(()=>{});
+    // 예약 확인 화면을 보는 동안 변경에 필요한 달을 미리 불러옵니다.
+    const prefetchMonths=new Map();
+    prefetchMonths.set(monthKey(new Date()),new Date());
+    reservations.slice(0,3).forEach(r=>{const d=parse(r.appointmentDate);prefetchMonths.set(monthKey(d),d)});
+    prefetchMonths.forEach(d=>loadMonthAvailability(d,false).catch(()=>{}));
   }catch(err){reservationCard.classList.add("hidden");showError(lookupError,err.message||"예약을 확인하지 못했습니다.")}
   finally{lookupButton.disabled=false;lookupButton.innerHTML='예약 확인하기 <span>→</span>'}
 };
@@ -80,8 +94,8 @@ function openChange(index){
   clearError(changeError);changeCard.classList.remove("hidden");cancelCard.classList.add("hidden");
   changeCurrentSummary.textContent=`현재 예약: ${format(currentReservation.appointmentDate)} ${currentReservation.appointmentTime}`;
   dateInput.value="";selectedTime="";timeArea.className="empty";timeArea.textContent="먼저 날짜를 선택해 주세요.";
-  calendarMonth=new Date();calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth(),1);
-  // 달력 틀은 네트워크 응답을 기다리지 않고 즉시 표시합니다.
+  calendarMonth=parse(currentReservation.appointmentDate);calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth(),1);
+  // 현재 예약이 있는 달을 즉시 보여주고, 휴진/마감 정보는 뒤에서 갱신합니다.
   renderCalendar();
   changeCard.scrollIntoView({behavior:"smooth",block:"start"});
   loadMonthAvailability(calendarMonth,false).catch(()=>{});
@@ -96,18 +110,35 @@ function openCancel(index){
 changeCloseButton.onclick=()=>changeCard.classList.add("hidden");
 cancelCloseButton.onclick=()=>cancelCard.classList.add("hidden");
 
+function chooseDate(key){
+  dateInput.value=key;selectedTime="";
+  document.querySelectorAll(".day").forEach(x=>x.classList.remove("selected"));
+  const selected=[...document.querySelectorAll(".day")].find(x=>x.dataset.date===key);if(selected)selected.classList.add("selected");
+  dateGuide.textContent=`${format(key)} 변경 시간을 확인하고 있습니다.`;
+  const data=monthData(parse(key));
+  if(data){
+    if(data.closedDates.has(key)){dateInput.value="";if(selected)selected.classList.remove("selected");timeArea.className="empty";timeArea.textContent="먼저 날짜를 선택해 주세요.";return showError(changeError,"선택한 날짜는 휴진일입니다. 다른 날짜를 선택해 주세요.")}
+    renderTimes(key);return;
+  }
+  timeArea.className="empty";timeArea.textContent="예약 가능시간을 확인 중입니다…";
+  loadMonthAvailability(parse(key),false).then(fresh=>{
+    if(dateInput.value!==key)return;
+    if(fresh.closedDates.has(key)){dateInput.value="";if(selected)selected.classList.remove("selected");timeArea.className="empty";timeArea.textContent="먼저 날짜를 선택해 주세요.";showError(changeError,"선택한 날짜는 휴진일입니다. 다른 날짜를 선택해 주세요.");renderCalendar();return}
+    clearError(changeError);dateGuide.textContent=`${format(key)} 변경 시간을 선택해 주세요.`;renderTimes(key);
+  }).catch(()=>{});
+}
+
 function renderCalendar(){
   calendarDays.innerHTML="";
   const y=calendarMonth.getFullYear(),m=calendarMonth.getMonth(),first=new Date(y,m,1),last=new Date(y,m+1,0).getDate(),data=monthData(calendarMonth);
   calendarTitle.textContent=`${y}년 ${m+1}월`;
-  dateGuide.textContent=data?"회색 날짜는 휴진일 또는 예약 불가일입니다.":"예약 가능일을 확인 중입니다…";
+  dateGuide.textContent=data?"회색 날짜는 휴진일 또는 예약 불가일입니다.":"달력은 바로 선택할 수 있습니다. 휴진일·마감시간을 확인 중입니다…";
   for(let i=0;i<first.getDay();i++){const e=document.createElement("span");e.className="day empty";calendarDays.appendChild(e)}
   for(let n=1;n<=last;n++){
-    const d=new Date(y,m,n),key=toKey(d),b=document.createElement("button");b.type="button";b.textContent=n;b.className="day";
+    const d=new Date(y,m,n),key=toKey(d),b=document.createElement("button");b.type="button";b.textContent=n;b.className="day";b.dataset.date=key;
     if(key===dateInput.value)b.classList.add("selected");
-    if(baseDisabled(d)||isClosed(d)){b.disabled=true;b.classList.add("disabled")}
-    else if(!data){b.disabled=true;b.classList.add("loading-day")}
-    else b.onclick=()=>{dateInput.value=key;selectedTime="";document.querySelectorAll(".day").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");dateGuide.textContent=`${format(key)} 변경 시간을 선택해 주세요.`;renderTimes(key);clearError(changeError)};
+    if(baseDisabled(d)||(data&&data.closedDates.has(key))){b.disabled=true;b.classList.add("disabled")}
+    else{if(!data)b.classList.add("pending-day");b.onclick=()=>{clearError(changeError);chooseDate(key)}}
     calendarDays.appendChild(b);
   }
   const r=range();previousMonthButton.disabled=new Date(y,m,0)<r.min;nextMonthButton.disabled=new Date(y,m+1,1)>r.max;
@@ -132,17 +163,17 @@ function renderTimes(key){
 }
 
 async function loadMonthAvailability(monthDate,force=false){
-  const key=monthKey(monthDate),cached=availabilityCache.get(key);
+  const key=monthKey(monthDate),cached=availabilityCache.get(key)||restoreMonthCache(key);
   if(!force&&cached&&Date.now()-cached.loadedAt<CACHE_MS){if(monthKey(calendarMonth)===key)renderCalendar();return cached}
   if(availabilityRequests.has(key))return availabilityRequests.get(key);
   const {start,end}=monthRange(monthDate);
   const request=(async()=>{
     try{
-      const response=await fetch(`/api/availability?start=${start}&end=${end}&_ts=${Date.now()}`,{cache:"no-store"});
+      const response=await fetch(`/api/availability?start=${start}&end=${end}`);
       const result=await response.json();if(!response.ok)throw new Error(result.error);
       const data={closedDates:new Set(result.closedDates||[]),bookedSlots:new Set(result.bookedSlots||[]),loadedAt:Date.now()};
-      availabilityCache.set(key,data);
-      if(monthKey(calendarMonth)===key){clearError(changeError);renderCalendar();if(dateInput.value&&monthKey(parse(dateInput.value))===key)renderTimes(dateInput.value)}
+      availabilityCache.set(key,data);saveMonthCache(key,data);
+      if(monthKey(calendarMonth)===key){clearError(changeError);renderCalendar();if(dateInput.value&&monthKey(parse(dateInput.value))===key&&!data.closedDates.has(dateInput.value))renderTimes(dateInput.value)}
       return data;
     }catch(e){if(monthKey(calendarMonth)===key){showError(changeError,e.message||"예약 일정을 불러오지 못했습니다.");dateGuide.textContent="예약 일정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."}throw e}
     finally{availabilityRequests.delete(key)}
@@ -159,7 +190,7 @@ changeSubmitButton.onclick=async()=>{
     const originalDate=currentReservation.appointmentDate,originalTime=currentReservation.appointmentTime;
     const response=await fetch("/api/change",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({patientName:nameInput.value.trim(),phoneLast4:phoneInput.value,originalDate,originalTime,appointmentDate,appointmentTime:selectedTime})});
     const result=await response.json();if(!response.ok)throw new Error(result.error||"예약을 변경하지 못했습니다.");
-    availabilityCache.delete(monthKey(parse(originalDate)));availabilityCache.delete(monthKey(parse(appointmentDate)));
+    [monthKey(parse(originalDate)),monthKey(parse(appointmentDate))].forEach(k=>{availabilityCache.delete(k);try{localStorage.removeItem(STORAGE_PREFIX+k)}catch{}});
     currentReservation.appointmentDate=appointmentDate;currentReservation.appointmentTime=selectedTime;
     successTitle.textContent="예약이 변경되었습니다.";successSummary.innerHTML=`<strong>${format(appointmentDate)}</strong><br>${selectedTime}<br>오지혜 원장님`;
     changeCard.classList.add("hidden");reservationCard.classList.add("hidden");successCard.classList.remove("hidden");successCard.scrollIntoView({behavior:"smooth",block:"start"});
@@ -173,7 +204,7 @@ cancelSubmitButton.onclick=async()=>{
   try{
     const response=await fetch("/api/cancel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({patientName:nameInput.value.trim(),phoneLast4:phoneInput.value,originalDate:currentReservation.appointmentDate,originalTime:currentReservation.appointmentTime})});
     const result=await response.json();if(!response.ok)throw new Error(result.error||"예약을 취소하지 못했습니다.");
-    availabilityCache.delete(monthKey(parse(currentReservation.appointmentDate)));
+    {const k=monthKey(parse(currentReservation.appointmentDate));availabilityCache.delete(k);try{localStorage.removeItem(STORAGE_PREFIX+k)}catch{}}
     successTitle.textContent="예약이 취소되었습니다.";successSummary.innerHTML=`<strong>${format(currentReservation.appointmentDate)}</strong><br>${currentReservation.appointmentTime}<br>예약 취소`;
     cancelCard.classList.add("hidden");reservationCard.classList.add("hidden");successCard.classList.remove("hidden");successCard.scrollIntoView({behavior:"smooth",block:"start"});
   }catch(err){showError(cancelError,err.message||"예약을 취소하지 못했습니다.")}

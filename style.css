@@ -2,4 +2,4 @@
 .reservation-guide{margin:-8px 0 18px}.reservation-list{display:grid;gap:18px}.reservation-item{padding:20px;border:1px solid #e6ddd1;border-radius:20px;background:#fffaf4}.reservation-item .action-row{margin-top:16px}.selected-reservation{margin:-5px 0 22px;padding:15px 18px;color:var(--navy);font-weight:800;border:1px solid #e6ddd1;border-radius:14px;background:#faf6ee}
 
 /* 예약 가능일을 불러오는 동안 달력 자체는 즉시 보여줍니다. */
-.day.loading-day{opacity:.55;cursor:wait;background:#f7f4ef;color:#b9b2aa}
+.day.pending-day{opacity:1;cursor:pointer}
