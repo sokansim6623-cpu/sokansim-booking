@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>오지혜 원장님 외래예약 등록 | 속안심내과</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="page admin-page">
+  <header class="topbar">
+    <div class="brand"><b class="cross">+</b><div><strong>속안심내과</strong><small>SOKANSIM INTERNAL MEDICINE</small></div></div>
+    <span class="badge">직원용</span>
+  </header>
+
+  <section class="hero compact">
+    <p class="eyebrow">직원 전용 예약 등록</p>
+    <h1>오지혜 원장님 외래예약</h1>
+    <p class="intro">환자 예약을 병원에서 먼저 등록하는 화면입니다.</p>
+    <div class="doctor"><div class="doctor-mark">OH</div><div><span>담당 의료진</span><strong>오지혜 원장님</strong><p>외래진료 예약 전용</p></div></div>
+  </section>
+
+  <section id="passwordCard" class="card">
+    <div class="title"><span>01</span><h2>직원 확인</h2></div>
+    <label>직원용 비밀번호 *<input id="adminPassword" type="password" autocomplete="current-password" placeholder="직원용 비밀번호"></label>
+    <p class="guide">비밀번호는 이 브라우저 탭을 닫으면 저장되지 않습니다.</p>
+    <p id="passwordError" class="error"></p>
+    <button id="passwordButton" class="submit" type="button">예약 등록 화면 열기</button>
+  </section>
+
+  <form id="adminForm" class="hidden">
+    <section class="card">
+      <div class="title"><span>02</span><h2>환자 정보</h2></div>
+      <div class="form-grid">
+        <label>차트번호 *<input id="chartNo" type="text" maxlength="20" inputmode="numeric" placeholder="차트번호" required></label>
+        <label>환자명 *<input id="patientName" type="text" maxlength="20" placeholder="환자명" required></label>
+        <label>휴대폰번호 뒷자리 *<input id="phoneLast4" type="text" maxlength="4" inputmode="numeric" placeholder="예: 1234" required></label>
+        <label>메모<textarea id="memo" maxlength="300" placeholder="필요한 메모가 있을 때만 입력해 주세요"></textarea></label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="title"><span>03</span><h2>예약 날짜</h2></div>
+      <div class="calendar">
+        <div class="calendar-head"><button type="button" id="previousMonth">‹</button><strong id="calendarTitle"></strong><button type="button" id="nextMonth">›</button></div>
+        <div class="week"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+        <div id="calendarDays" class="days"></div>
+      </div>
+      <input type="hidden" id="appointmentDate">
+      <p id="dateGuide" class="guide">예약 날짜를 선택해 주세요.</p>
+    </section>
+
+    <section class="card">
+      <div class="title"><span>04</span><h2>예약 시간</h2></div>
+      <div id="timeArea" class="empty">먼저 예약 날짜를 선택해 주세요.</div>
+    </section>
+
+    <p id="adminError" class="error"></p>
+    <button id="submitButton" class="submit" type="submit">예약 등록하기 <span>→</span></button>
+  </form>
+
+  <section id="successScreen" class="success hidden">
+    <div class="check">✓</div>
+    <h2>예약이 등록되었습니다.</h2>
+    <div id="reservationSummary" class="summary"></div>
+    <button id="newReservationButton" class="secondary restart" type="button">다른 예약 등록하기</button>
+  </section>
+
+  <footer>직원용 · 오지혜 원장님 외래예약</footer>
+</main>
+<script src="admin.js"></script>
+</body>
+</html>

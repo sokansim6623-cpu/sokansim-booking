@@ -3,106 +3,83 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="속안심내과 외래진료 예약">
-  <title>외래진료 예약 | 속안심내과</title>
+  <title>외래진료 예약 확인 | 속안심내과</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main class="page">
-  <header>
-    <div class="brand">
-      <b class="cross">+</b>
-      <div><strong>속안심내과</strong><small>SOKANSIM INTERNAL MEDICINE</small></div>
-    </div>
-    <span class="badge">전용 예약</span>
+  <header class="topbar">
+    <div class="brand"><b class="cross">+</b><div><strong>속안심내과</strong><small>SOKANSIM INTERNAL MEDICINE</small></div></div>
+    <span class="badge">예약 확인</span>
   </header>
 
-  <section class="hero">
-    <p class="eyebrow">속안심내과 전용</p>
-    <h1>외래진료 예약</h1>
-    <p class="intro">진료 후 다음 내원일을 안내받은 환자분을 위한 예약 신청 화면입니다.</p>
-    <div class="doctor">
-      <div class="doctor-logo"><img src="logo.png" alt="속안심내과 S 로고"></div>
-      <div><span>담당 의료진</span><strong>오지혜 원장님</strong><p>외래진료 예약</p></div>
+  <section class="hero compact">
+    <p class="eyebrow">오지혜 원장님 외래진료</p>
+    <h1>예약 확인 · 변경 · 취소</h1>
+    <p class="intro">병원에서 안내받은 예약을 확인하고, 필요한 경우 예약 일정을 변경하거나 취소할 수 있습니다.</p>
+    <div class="doctor"><div class="doctor-mark">OH</div><div><span>담당 의료진</span><strong>오지혜 원장님</strong><p>외래진료 예약</p></div></div>
+  </section>
+
+  <section id="lookupCard" class="card">
+    <div class="title"><span>01</span><h2>본인 확인</h2></div>
+    <form id="lookupForm">
+      <label>성함 *<input id="patientName" type="text" maxlength="20" autocomplete="name" placeholder="성함을 입력해 주세요" required></label>
+      <label>휴대전화번호 뒤 4자리 *<input id="phoneLast4" type="text" maxlength="4" inputmode="numeric" autocomplete="tel" placeholder="예: 1234" required><small>예약 등록 시 입력한 번호의 뒤 4자리</small></label>
+      <p id="lookupError" class="error"></p>
+      <button id="lookupButton" class="submit" type="submit">예약 확인하기 <span>→</span></button>
+    </form>
+  </section>
+
+  <section id="reservationCard" class="card hidden">
+    <div class="title"><span>02</span><h2>예약 정보</h2></div>
+    <div class="reservation-box">
+      <div><span>환자명</span><strong id="resultName">-</strong></div>
+      <div><span>담당 의료진</span><strong>오지혜 원장님</strong></div>
+      <div class="wide"><span>예약 일시</span><strong id="resultDateTime">-</strong></div>
+    </div>
+    <div class="action-row">
+      <button id="changeOpenButton" class="secondary" type="button">예약 변경</button>
+      <button id="cancelOpenButton" class="danger-ghost" type="button">예약 취소</button>
     </div>
   </section>
 
-  <div class="mode-tabs" role="tablist" aria-label="예약 메뉴">
-    <button type="button" id="bookingTab" class="mode-tab active">예약 신청</button>
-    <button type="button" id="lookupTab" class="mode-tab">예약 확인</button>
-  </div>
-
-  <form id="reservationForm">
-    <section class="card">
-      <div class="title"><span>01</span><h2>환자 정보</h2></div>
-      <label>성함 *
-        <input id="patientName" type="text" maxlength="20" placeholder="성함을 입력해 주세요" autocomplete="name" required>
-      </label>
-      <label>생년월일 *
-        <input id="birthDate" type="text" maxlength="8" inputmode="numeric" placeholder="예: 19850312" autocomplete="bday" required>
-        <small>숫자 8자리</small>
-      </label>
-      <label>휴대전화번호 *
-        <input id="phoneNumber" type="tel" maxlength="13" inputmode="numeric" placeholder="예: 010-0000-0000" autocomplete="tel" required>
-        <small>예약 확인과 변경·취소에 사용됩니다.</small>
-      </label>
-    </section>
-
-    <div id="bookingFields">
-    <section class="card">
-      <div class="title"><span>02</span><h2>예약 희망일</h2></div>
-      <label>예약 희망 날짜 *</label>
-      <div class="calendar">
-        <div class="calendar-head">
-          <button type="button" id="previousMonth" aria-label="이전 달">‹</button>
-          <strong id="calendarTitle"></strong>
-          <button type="button" id="nextMonth" aria-label="다음 달">›</button>
-        </div>
-        <div class="week"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
-        <div id="calendarDays" class="days"></div>
-      </div>
-      <input type="hidden" id="appointmentDate">
-      <p id="dateGuide" class="guide">회색 날짜는 예약할 수 없습니다.</p>
-    </section>
-
-    <section class="card">
-      <div class="title"><span>03</span><h2>시간대 선택</h2></div>
-      <div id="timeArea" class="empty">먼저 예약 희망일을 선택해 주세요.</div>
-    </section>
+  <section id="changeCard" class="card hidden">
+    <div class="title"><span>03</span><h2>예약 일정 변경</h2></div>
+    <label>변경할 날짜 *</label>
+    <div class="calendar">
+      <div class="calendar-head"><button type="button" id="previousMonth">‹</button><strong id="calendarTitle"></strong><button type="button" id="nextMonth">›</button></div>
+      <div class="week"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+      <div id="calendarDays" class="days"></div>
     </div>
-
-    <label class="privacy">
-      <input type="checkbox" id="privacyConsent">
-      <span><strong>개인정보 수집·이용에 동의합니다. *</strong><small id="privacyDescription">예약 확인을 위해 성함, 생년월일, 휴대전화번호, 희망 일시를 수집합니다.</small></span>
-    </label>
-
-    <p id="errorMessage" class="error" role="alert"></p>
-    <button id="submitButton" class="submit" type="submit">예약 신청하기 <span>→</span></button>
-  </form>
-
-  <section id="existingScreen" class="success hidden">
-    <div class="check calendar-icon">✓</div>
-    <h2>이미 신청된 예약이 있습니다.</h2>
-    <p class="screen-guide">아래 예약 내용을 확인해 주세요.</p>
-    <div id="existingSummary" class="summary"></div>
-    <div class="action-buttons">
-      <button type="button" id="changeButton" class="action primary">예약 변경</button>
-      <button type="button" id="cancelButton" class="action danger">예약 취소</button>
+    <input type="hidden" id="appointmentDate">
+    <p id="dateGuide" class="guide">변경할 날짜를 선택해 주세요.</p>
+    <div id="timeArea" class="empty">먼저 날짜를 선택해 주세요.</div>
+    <p id="changeError" class="error"></p>
+    <div class="action-row">
+      <button id="changeSubmitButton" class="submit inline" type="button">변경 확정</button>
+      <button id="changeCloseButton" class="secondary" type="button">돌아가기</button>
     </div>
-    <button type="button" id="backButton" class="text-button">처음으로 돌아가기</button>
-    <p id="manageError" class="error" role="alert"></p>
   </section>
 
-  <section id="successScreen" class="success hidden">
+  <section id="cancelCard" class="card hidden">
+    <div class="title"><span>03</span><h2>예약 취소</h2></div>
+    <div class="warning-box"><strong>예약을 취소하시겠습니까?</strong><p id="cancelSummary">-</p><small>취소 후 다시 예약이 필요하시면 병원으로 문의해 주세요.</small></div>
+    <p id="cancelError" class="error"></p>
+    <div class="action-row">
+      <button id="cancelSubmitButton" class="danger" type="button">예약 취소하기</button>
+      <button id="cancelCloseButton" class="secondary" type="button">예약 유지</button>
+    </div>
+  </section>
+
+  <section id="successCard" class="success hidden">
     <div class="check">✓</div>
-    <h2 id="successTitle">예약이 확정되었습니다.</h2>
-    <p id="successGuide" class="screen-guide">예약하신 날짜와 시간을 확인해 주세요.</p>
-    <div id="reservationSummary" class="summary"></div>
-    <button type="button" id="homeButton" class="action primary full">확인</button>
+    <h2 id="successTitle">처리가 완료되었습니다.</h2>
+    <div id="successSummary" class="summary"></div>
+    <button id="restartButton" class="secondary restart" type="button">예약 다시 확인하기</button>
   </section>
 
   <footer>환자를 위한 진심, 속안심내과</footer>
 </main>
-<script src="script.js"></script>
+<script src="patient.js"></script>
 </body>
 </html>
