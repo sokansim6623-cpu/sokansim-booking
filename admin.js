@@ -135,17 +135,21 @@ async function loadAvailability() {
   const r = range();
   closedDates = new Set();
   bookedSlots = new Set();
+  schedule = {};
   try {
     const response = await fetch(`/api/availability?start=${r.start}&end=${r.end}`, { cache: "no-store" });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error);
+    if (!response.ok) throw new Error(result.error || "예약 일정을 불러오지 못했습니다.");
+    if (!result.schedule || Object.keys(result.schedule).length === 0) throw new Error("진료 일정을 불러오지 못했습니다.");
     closedDates = new Set(result.closedDates || []);
     bookedSlots = new Set(result.bookedSlots || []);
-    schedule = result.schedule || {};
+    schedule = result.schedule;
+    renderCalendar();
   } catch (error) {
+    calendarTitle.textContent = "일정 확인 필요";
+    calendarDays.innerHTML = '<div style="grid-column:1/-1;padding:24px 8px;text-align:center;color:#c94b3f;">예약 일정을 불러오지 못했습니다.<br>잠시 후 새로고침해 주세요.</div>';
     showError(adminError, error.message || "예약 일정을 불러오지 못했습니다.");
   }
-  renderCalendar();
 }
 
 form.onsubmit = async (event) => {
