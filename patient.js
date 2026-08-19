@@ -1,15 +1,14 @@
 const $=id=>document.getElementById(id);
 const lookupForm=$("lookupForm"),nameInput=$("patientName"),phoneInput=$("phoneLast4"),lookupButton=$("lookupButton"),lookupError=$("lookupError");
-const reservationCard=$("reservationCard"),resultName=$("resultName"),resultDateTime=$("resultDateTime"),changeCard=$("changeCard"),cancelCard=$("cancelCard"),successCard=$("successCard");
-const changeOpenButton=$("changeOpenButton"),cancelOpenButton=$("cancelOpenButton"),changeCloseButton=$("changeCloseButton"),cancelCloseButton=$("cancelCloseButton");
-const changeSubmitButton=$("changeSubmitButton"),cancelSubmitButton=$("cancelSubmitButton"),changeError=$("changeError"),cancelError=$("cancelError");
+const reservationCard=$("reservationCard"),reservationList=$("reservationList"),changeCard=$("changeCard"),cancelCard=$("cancelCard"),successCard=$("successCard");
+const changeCloseButton=$("changeCloseButton"),cancelCloseButton=$("cancelCloseButton"),changeSubmitButton=$("changeSubmitButton"),cancelSubmitButton=$("cancelSubmitButton"),changeError=$("changeError"),cancelError=$("cancelError");
 const dateInput=$("appointmentDate"),dateGuide=$("dateGuide"),timeArea=$("timeArea"),calendarTitle=$("calendarTitle"),calendarDays=$("calendarDays"),previousMonthButton=$("previousMonth"),nextMonthButton=$("nextMonth");
-const cancelSummary=$("cancelSummary"),successTitle=$("successTitle"),successSummary=$("successSummary"),restartButton=$("restartButton");
+const changeCurrentSummary=$("changeCurrentSummary"),cancelSummary=$("cancelSummary"),successTitle=$("successTitle"),successSummary=$("successSummary"),restartButton=$("restartButton");
 
 const morning=["08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30"];
 const afternoon=["14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"];
 const weekdays=["일","월","화","수","목","금","토"];
-let currentReservation=null,selectedTime="",closedDates=new Set(),bookedSlots=new Set(),calendarMonth=new Date();
+let reservations=[],currentReservation=null,selectedTime="",closedDates=new Set(),bookedSlots=new Set(),calendarMonth=new Date();
 calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth(),1);
 
 const pad=n=>String(n).padStart(2,"0");
@@ -17,7 +16,7 @@ const toKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
 const parse=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)};
 const format=k=>{const d=parse(k);return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${weekdays[d.getDay()]})`};
-function range(){const t=new Date(),min=addDays(t,1),max=addDays(t,90);return{min,max,start:toKey(min),end:toKey(max)}}
+function range(){const t=new Date(),min=addDays(t,1),max=addDays(t,180);return{min,max,start:toKey(min),end:toKey(max)}}
 function showError(el,msg){el.textContent=msg;el.classList.add("show")}
 function clearError(el){el.textContent="";el.classList.remove("show")}
 function isDisabled(d){const r=range(),x=new Date(d.getFullYear(),d.getMonth(),d.getDate()),min=new Date(r.min.getFullYear(),r.min.getMonth(),r.min.getDate()),max=new Date(r.max.getFullYear(),r.max.getMonth(),r.max.getDate());return x<min||x>max||d.getDay()===0||d.getDay()===6||closedDates.has(toKey(d))}
@@ -34,28 +33,64 @@ lookupForm.onsubmit=async e=>{
     const response=await fetch("/api/lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({patientName,phoneLast4})});
     const result=await response.json();
     if(!response.ok)throw new Error(result.error||"예약을 확인하지 못했습니다.");
-    currentReservation=result.reservation;
-    renderReservation();
-  }catch(err){showError(lookupError,err.message||"예약을 확인하지 못했습니다.")}
+    reservations=Array.isArray(result.reservations)?result.reservations:[];
+    if(!reservations.length)throw new Error("확인되는 예약이 없습니다.");
+    renderReservations();
+  }catch(err){reservationCard.classList.add("hidden");showError(lookupError,err.message||"예약을 확인하지 못했습니다.")}
   finally{lookupButton.disabled=false;lookupButton.innerHTML='예약 확인하기 <span>→</span>'}
 };
 
-function renderReservation(){
-  resultName.textContent=currentReservation.patientName;
-  resultDateTime.textContent=`${format(currentReservation.appointmentDate)} ${currentReservation.appointmentTime}`;
-  cancelSummary.textContent=`${format(currentReservation.appointmentDate)} ${currentReservation.appointmentTime} · 오지혜 원장님`;
+function renderReservations(){
+  reservationList.innerHTML="";
+  reservations.forEach((reservation,index)=>{
+    const item=document.createElement("article");
+    item.className="reservation-item";
+
+    const box=document.createElement("div");
+    box.className="reservation-box";
+    const nameBlock=document.createElement("div");
+    const nameLabel=document.createElement("span");nameLabel.textContent="환자명";
+    const nameValue=document.createElement("strong");nameValue.textContent=reservation.patientName;
+    nameBlock.append(nameLabel,nameValue);
+    const doctorBlock=document.createElement("div");
+    const doctorLabel=document.createElement("span");doctorLabel.textContent="담당 의료진";
+    const doctorValue=document.createElement("strong");doctorValue.textContent="오지혜 원장님";
+    doctorBlock.append(doctorLabel,doctorValue);
+    const dateBlock=document.createElement("div");dateBlock.className="wide";
+    const dateLabel=document.createElement("span");dateLabel.textContent="예약 일시";
+    const dateValue=document.createElement("strong");dateValue.textContent=`${format(reservation.appointmentDate)} ${reservation.appointmentTime}`;
+    dateBlock.append(dateLabel,dateValue);
+    box.append(nameBlock,doctorBlock,dateBlock);
+
+    const actions=document.createElement("div");actions.className="action-row";
+    const changeButton=document.createElement("button");changeButton.type="button";changeButton.className="secondary";changeButton.textContent="예약 변경";changeButton.onclick=()=>openChange(index);
+    const cancelButton=document.createElement("button");cancelButton.type="button";cancelButton.className="danger-ghost";cancelButton.textContent="예약 취소";cancelButton.onclick=()=>openCancel(index);
+    actions.append(changeButton,cancelButton);
+    item.append(box,actions);
+    reservationList.appendChild(item);
+  });
   reservationCard.classList.remove("hidden");changeCard.classList.add("hidden");cancelCard.classList.add("hidden");successCard.classList.add("hidden");
   reservationCard.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
-changeOpenButton.onclick=async()=>{
+async function openChange(index){
+  currentReservation=reservations[index];
   clearError(changeError);changeCard.classList.remove("hidden");cancelCard.classList.add("hidden");
+  changeCurrentSummary.textContent=`현재 예약: ${format(currentReservation.appointmentDate)} ${currentReservation.appointmentTime}`;
   dateInput.value="";selectedTime="";timeArea.className="empty";timeArea.textContent="먼저 날짜를 선택해 주세요.";
+  dateGuide.textContent="회색 날짜는 휴진일 또는 예약 불가일입니다.";
   calendarMonth=new Date();calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth(),1);
   await loadAvailability();changeCard.scrollIntoView({behavior:"smooth",block:"start"});
-};
+}
+
+function openCancel(index){
+  currentReservation=reservations[index];
+  clearError(cancelError);cancelCard.classList.remove("hidden");changeCard.classList.add("hidden");
+  cancelSummary.textContent=`${format(currentReservation.appointmentDate)} ${currentReservation.appointmentTime} · 오지혜 원장님`;
+  cancelCard.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
 changeCloseButton.onclick=()=>changeCard.classList.add("hidden");
-cancelOpenButton.onclick=()=>{clearError(cancelError);cancelCard.classList.remove("hidden");changeCard.classList.add("hidden");cancelCard.scrollIntoView({behavior:"smooth",block:"start"})};
 cancelCloseButton.onclick=()=>cancelCard.classList.add("hidden");
 
 function renderCalendar(){
@@ -77,7 +112,7 @@ function renderTimes(key){selectedTime="";timeArea.innerHTML="";timeArea.classNa
 async function loadAvailability(){
   const r=range();closedDates=new Set();bookedSlots=new Set();
   try{
-    const response=await fetch(`/api/availability?start=${r.start}&end=${r.end}&excludeReservationId=${encodeURIComponent(currentReservation.reservationId)}`),result=await response.json();
+    const response=await fetch(`/api/availability?start=${r.start}&end=${r.end}&excludeDate=${encodeURIComponent(currentReservation.appointmentDate)}&excludeTime=${encodeURIComponent(currentReservation.appointmentTime)}`),result=await response.json();
     if(!response.ok)throw new Error(result.error);
     closedDates=new Set(result.closedDates||[]);bookedSlots=new Set(result.bookedSlots||[]);
   }catch(e){showError(changeError,e.message||"예약 일정을 불러오지 못했습니다.")}
@@ -86,12 +121,13 @@ async function loadAvailability(){
 
 changeSubmitButton.onclick=async()=>{
   clearError(changeError);const appointmentDate=dateInput.value;
+  if(!currentReservation)return showError(changeError,"변경할 예약을 다시 선택해 주세요.");
   if(!appointmentDate||!selectedTime)return showError(changeError,"변경할 날짜와 시간을 선택해 주세요.");
   changeSubmitButton.disabled=true;changeSubmitButton.textContent="변경 중입니다…";
   try{
-    const response=await fetch("/api/change",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reservationId:currentReservation.reservationId,patientName:nameInput.value.trim(),phoneLast4:phoneInput.value,appointmentDate,appointmentTime:selectedTime})});
+    const originalDate=currentReservation.appointmentDate,originalTime=currentReservation.appointmentTime;
+    const response=await fetch("/api/change",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({patientName:nameInput.value.trim(),phoneLast4:phoneInput.value,originalDate,originalTime,appointmentDate,appointmentTime:selectedTime})});
     const result=await response.json();if(!response.ok)throw new Error(result.error||"예약을 변경하지 못했습니다.");
-    currentReservation.appointmentDate=appointmentDate;currentReservation.appointmentTime=selectedTime;
     successTitle.textContent="예약이 변경되었습니다.";successSummary.innerHTML=`<strong>${format(appointmentDate)}</strong><br>${selectedTime} · 오지혜 원장님`;
     reservationCard.classList.add("hidden");changeCard.classList.add("hidden");cancelCard.classList.add("hidden");successCard.classList.remove("hidden");successCard.scrollIntoView({behavior:"smooth"});
   }catch(err){showError(changeError,err.message||"예약을 변경하지 못했습니다.")}
@@ -99,9 +135,11 @@ changeSubmitButton.onclick=async()=>{
 };
 
 cancelSubmitButton.onclick=async()=>{
-  clearError(cancelError);cancelSubmitButton.disabled=true;cancelSubmitButton.textContent="취소 중입니다…";
+  clearError(cancelError);
+  if(!currentReservation)return showError(cancelError,"취소할 예약을 다시 선택해 주세요.");
+  cancelSubmitButton.disabled=true;cancelSubmitButton.textContent="취소 중입니다…";
   try{
-    const response=await fetch("/api/cancel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reservationId:currentReservation.reservationId,patientName:nameInput.value.trim(),phoneLast4:phoneInput.value})});
+    const response=await fetch("/api/cancel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({patientName:nameInput.value.trim(),phoneLast4:phoneInput.value,originalDate:currentReservation.appointmentDate,originalTime:currentReservation.appointmentTime})});
     const result=await response.json();if(!response.ok)throw new Error(result.error||"예약을 취소하지 못했습니다.");
     successTitle.textContent="예약이 취소되었습니다.";successSummary.textContent=`${format(currentReservation.appointmentDate)} ${currentReservation.appointmentTime} 예약이 취소되었습니다.`;
     reservationCard.classList.add("hidden");changeCard.classList.add("hidden");cancelCard.classList.add("hidden");successCard.classList.remove("hidden");successCard.scrollIntoView({behavior:"smooth"});

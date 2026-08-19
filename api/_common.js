@@ -14,8 +14,3 @@ export function validName(v){return /^[가-힣a-zA-Z\s]{2,20}$/.test(String(v||"
 export function validLast4(v){return /^\d{4}$/.test(String(v||""))}
 export function validDate(v){return /^\d{4}-\d{2}-\d{2}$/.test(String(v||""))}
 export function validTime(v){return /^\d{2}:\d{2}$/.test(String(v||""))}
-export function checkAdmin(req){
-  const expected=process.env.ADMIN_PASSWORD;
-  const received=req.headers["x-admin-password"];
-  return Boolean(expected&&received&&received===expected);
-}

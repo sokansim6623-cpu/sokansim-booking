@@ -20,17 +20,9 @@
     <div class="doctor"><div class="doctor-mark">OH</div><div><span>담당 의료진</span><strong>오지혜 원장님</strong><p>외래진료 예약 전용</p></div></div>
   </section>
 
-  <section id="passwordCard" class="card">
-    <div class="title"><span>01</span><h2>직원 확인</h2></div>
-    <label>직원용 비밀번호 *<input id="adminPassword" type="password" autocomplete="current-password" placeholder="직원용 비밀번호"></label>
-    <p class="guide">비밀번호는 이 브라우저 탭을 닫으면 저장되지 않습니다.</p>
-    <p id="passwordError" class="error"></p>
-    <button id="passwordButton" class="submit" type="button">예약 등록 화면 열기</button>
-  </section>
-
-  <form id="adminForm" class="hidden">
+  <form id="adminForm">
     <section class="card">
-      <div class="title"><span>02</span><h2>환자 정보</h2></div>
+      <div class="title"><span>01</span><h2>환자 정보</h2></div>
       <div class="form-grid">
         <label>차트번호 *<input id="chartNo" type="text" maxlength="20" inputmode="numeric" placeholder="차트번호" required></label>
         <label>환자명 *<input id="patientName" type="text" maxlength="20" placeholder="환자명" required></label>
@@ -40,18 +32,18 @@
     </section>
 
     <section class="card">
-      <div class="title"><span>03</span><h2>예약 날짜</h2></div>
+      <div class="title"><span>02</span><h2>예약 날짜</h2></div>
       <div class="calendar">
         <div class="calendar-head"><button type="button" id="previousMonth">‹</button><strong id="calendarTitle"></strong><button type="button" id="nextMonth">›</button></div>
         <div class="week"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
         <div id="calendarDays" class="days"></div>
       </div>
       <input type="hidden" id="appointmentDate">
-      <p id="dateGuide" class="guide">예약 날짜를 선택해 주세요.</p>
+      <p id="dateGuide" class="guide">회색 날짜는 휴진일 또는 예약 불가일입니다.</p>
     </section>
 
     <section class="card">
-      <div class="title"><span>04</span><h2>예약 시간</h2></div>
+      <div class="title"><span>03</span><h2>예약 시간</h2></div>
       <div id="timeArea" class="empty">먼저 예약 날짜를 선택해 주세요.</div>
     </section>
 

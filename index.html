@@ -32,19 +32,13 @@
 
   <section id="reservationCard" class="card hidden">
     <div class="title"><span>02</span><h2>예약 정보</h2></div>
-    <div class="reservation-box">
-      <div><span>환자명</span><strong id="resultName">-</strong></div>
-      <div><span>담당 의료진</span><strong>오지혜 원장님</strong></div>
-      <div class="wide"><span>예약 일시</span><strong id="resultDateTime">-</strong></div>
-    </div>
-    <div class="action-row">
-      <button id="changeOpenButton" class="secondary" type="button">예약 변경</button>
-      <button id="cancelOpenButton" class="danger-ghost" type="button">예약 취소</button>
-    </div>
+    <p class="guide reservation-guide">오늘 이후의 예약만 표시됩니다. 예약이 여러 건이면 변경하거나 취소할 예약을 선택해 주세요.</p>
+    <div id="reservationList" class="reservation-list"></div>
   </section>
 
   <section id="changeCard" class="card hidden">
     <div class="title"><span>03</span><h2>예약 일정 변경</h2></div>
+    <div id="changeCurrentSummary" class="selected-reservation"></div>
     <label>변경할 날짜 *</label>
     <div class="calendar">
       <div class="calendar-head"><button type="button" id="previousMonth">‹</button><strong id="calendarTitle"></strong><button type="button" id="nextMonth">›</button></div>
@@ -52,7 +46,7 @@
       <div id="calendarDays" class="days"></div>
     </div>
     <input type="hidden" id="appointmentDate">
-    <p id="dateGuide" class="guide">변경할 날짜를 선택해 주세요.</p>
+    <p id="dateGuide" class="guide">회색 날짜는 휴진일 또는 예약 불가일입니다.</p>
     <div id="timeArea" class="empty">먼저 날짜를 선택해 주세요.</div>
     <p id="changeError" class="error"></p>
     <div class="action-row">
