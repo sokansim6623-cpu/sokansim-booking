@@ -35,8 +35,6 @@ function setupSheets() {
   if (!properties.getProperty("WEBHOOK_KEY")) {
     properties.setProperty("WEBHOOK_KEY", Utilities.getUuid().replace(/-/g, ""));
   }
-  if (!properties.getProperty("AVAILABILITY_VERSION")) properties.setProperty("AVAILABILITY_VERSION", "1");
-  bumpAvailabilityVersion_();
   Logger.log("연동 키: " + properties.getProperty("WEBHOOK_KEY"));
 }
 
@@ -55,19 +53,11 @@ function doGet(event) {
       return json_({ ok: false, error: "invalid_range" });
     }
 
-    const version = getAvailabilityVersion_();
-    const cache = CacheService.getScriptCache();
-    const cacheKey = ["availability", version, startKey, endKey, excludeDate, excludeTime].join(":");
-    const cached = cache.get(cacheKey);
-    if (cached) return json_(JSON.parse(cached));
-
-    const result = {
+    return json_({
       ok: true,
       closedDates: getClosedDateKeys_(startKey, endKey),
       bookedSlots: getBookedSlotKeys_(startKey, endKey, excludeDate, excludeTime),
-    };
-    cache.put(cacheKey, JSON.stringify(result), 20);
-    return json_(result);
+    });
   } catch (error) {
     return json_({ ok: false, error: String(error) });
   }
@@ -117,7 +107,6 @@ function createReservation_(payload) {
     sheet.getRange(newRow, 1, 1, 8).setValues([[chartNo, patientName, phoneLast4, appointmentDate, appointmentTime, memo, "예약", ""]]);
     formatReservationDataRow_(sheet, newRow);
     syncMonthlySheets_();
-    bumpAvailabilityVersion_();
     return json_({ ok: true });
   } finally {
     lock.releaseLock();
@@ -191,7 +180,6 @@ function changeReservation_(payload) {
       sheet.getRange(row, 8).setValue(appendRemark_(currentRemark, changeText));
       formatReservationDataRow_(sheet, row);
       syncMonthlySheets_();
-      bumpAvailabilityVersion_();
     }
 
     return json_({ ok: true });
@@ -224,7 +212,6 @@ function cancelReservation_(payload) {
     sheet.getRange(row, 8).setValue("취소");
     formatReservationDataRow_(sheet, row);
     syncMonthlySheets_();
-    bumpAvailabilityVersion_();
     return json_({ ok: true });
   } finally {
     lock.releaseLock();
@@ -461,7 +448,7 @@ function syncMonthlySheets_(spreadsheetOverride) {
 
   const existingMonthly = {};
   spreadsheet.getSheets().forEach(function (sheet) {
-    if (/^\d{4}-\d{2}$/.test(sheet.getName())) existingMonthly[sheet.getName()] = sheet;
+    if (/^\d{4}년 \d{2}월$/.test(sheet.getName())) existingMonthly[sheet.getName()] = sheet;
   });
 
   Object.keys(existingMonthly).forEach(function (name) {
@@ -494,7 +481,7 @@ function writeMonthlySheet_(sheet, rows) {
 
 function monthSheetName_(dateKey) {
   const matched = String(dateKey || "").match(/^(\d{4})-(\d{2})-/);
-  return matched ? matched[1] + "-" + matched[2] : "";
+  return matched ? matched[1] + "년 " + matched[2] + "월" : "";
 }
 
 function rebuildMonthlySheets() {
@@ -505,13 +492,7 @@ function onEdit(event) {
   try {
     if (!event || !event.range) return;
     const sheet = event.range.getSheet();
-    const name = sheet.getName();
-    if (name === RESERVATION_SHEET && event.range.getRow() > 1) {
-      syncMonthlySheets_(event.source);
-      bumpAvailabilityVersion_();
-    } else if (name === CLOSED_DATE_SHEET && event.range.getRow() > 1) {
-      bumpAvailabilityVersion_();
-    }
+    if (sheet.getName() === RESERVATION_SHEET && event.range.getRow() > 1) syncMonthlySheets_(event.source);
   } catch (error) {
     console.log(error);
   }
@@ -564,11 +545,6 @@ function isClosedDate_(dateKey) {
 }
 
 function getHolidayDates_(startKey, endKey) {
-  const cache = CacheService.getScriptCache();
-  const cacheKey = "holiday:" + startKey + ":" + endKey;
-  const cached = cache.get(cacheKey);
-  if (cached) return JSON.parse(cached);
-
   const calendar = CalendarApp.getCalendarById(KOREAN_HOLIDAY_CALENDAR);
   if (!calendar) return [];
   const start = new Date(startKey + "T00:00:00+09:00");
@@ -577,20 +553,7 @@ function getHolidayDates_(startKey, endKey) {
   calendar.getEvents(start, end).forEach(function (holiday) {
     closed.add(Utilities.formatDate(holiday.getStartTime(), TIME_ZONE, "yyyy-MM-dd"));
   });
-  const result = Array.from(closed);
-  cache.put(cacheKey, JSON.stringify(result), 21600);
-  return result;
-}
-
-function getAvailabilityVersion_() {
-  const properties = PropertiesService.getScriptProperties();
-  return properties.getProperty("AVAILABILITY_VERSION") || "1";
-}
-
-function bumpAvailabilityVersion_() {
-  const properties = PropertiesService.getScriptProperties();
-  const current = Number(properties.getProperty("AVAILABILITY_VERSION") || "1");
-  properties.setProperty("AVAILABILITY_VERSION", String(current + 1));
+  return Array.from(closed);
 }
 
 function getReservationSheet_() {
@@ -604,13 +567,10 @@ function isAuthorized_(event) {
   return Boolean(savedKey && event.parameter && event.parameter.key === savedKey);
 }
 
-let SPREADSHEET_CACHE_ = null;
 function getSpreadsheet_() {
-  if (SPREADSHEET_CACHE_) return SPREADSHEET_CACHE_;
   const spreadsheetId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
   if (!spreadsheetId) throw new Error("setupSheets 함수를 먼저 실행해 주세요.");
-  SPREADSHEET_CACHE_ = SpreadsheetApp.openById(spreadsheetId);
-  return SPREADSHEET_CACHE_;
+  return SpreadsheetApp.openById(spreadsheetId);
 }
 
 function json_(value) {
